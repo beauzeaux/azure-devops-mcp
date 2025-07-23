@@ -370,19 +370,23 @@ function configureWorkItemTools(server: McpServer, tokenProvider: () => Promise<
     WORKITEM_TOOLS.link_work_item_to_pull_request,
     "Link a single work item to an existing pull request.",
     {
-      projectId: z.string().describe("The project ID of the Azure DevOps project (note: project name is not valid)."),
+      projectId: z.string().describe("The project ID of the Azure DevOps project containing the work item (note: project name is not valid)."),
       repositoryId: z.string().describe("The ID of the repository containing the pull request. Do not use the repository name here, use the ID instead."),
       pullRequestId: z.number().describe("The ID of the pull request to link to."),
       workItemId: z.number().describe("The ID of the work item to link to the pull request."),
+      pullRequestProjectId: z.string().optional().describe("The project ID containing the pull request. If not provided, defaults to the work item's project ID (for same-project linking)."),
     },
-    async ({ projectId, repositoryId, pullRequestId, workItemId }) => {
+    async ({ projectId, repositoryId, pullRequestId, workItemId, pullRequestProjectId }) => {
       try {
         const connection = await connectionProvider();
         const workItemTrackingApi = await connection.getWorkItemTrackingApi();
 
+        // Use pullRequestProjectId if provided, otherwise fall back to projectId for backward compatibility
+        const prProjectId = pullRequestProjectId || projectId;
+
         // Create artifact link relation using vstfs format
-        // Format: vstfs:///Git/PullRequestId/{project}/{repositoryId}/{pullRequestId}
-        const artifactPathValue = `${projectId}/${repositoryId}/${pullRequestId}`;
+        // Format: vstfs:///Git/PullRequestId/{pullRequestProject}/{repositoryId}/{pullRequestId}
+        const artifactPathValue = `${prProjectId}/${repositoryId}/${pullRequestId}`;
         const vstfsUrl = `vstfs:///Git/PullRequestId/${encodeURIComponent(artifactPathValue)}`;
 
         // Use the PATCH document format for adding a relation
@@ -401,6 +405,7 @@ function configureWorkItemTools(server: McpServer, tokenProvider: () => Promise<
         ];
 
         // Use the WorkItem API to update the work item with the new relation
+        // Use projectId (work item's project) for the updateWorkItem call
         const workItem = await workItemTrackingApi.updateWorkItem({}, patchDocument, workItemId, projectId);
 
         if (!workItem) {
@@ -415,6 +420,9 @@ function configureWorkItemTools(server: McpServer, tokenProvider: () => Promise<
                 {
                   workItemId,
                   pullRequestId,
+                  workItemProjectId: projectId,
+                  pullRequestProjectId: prProjectId,
+                  vstfsUrl,
                   success: true,
                 },
                 null,

@@ -473,6 +473,9 @@ describe("configureWorkItemTools", () => {
           {
             workItemId: 131489,
             pullRequestId: 67890,
+            workItemProjectId: "6bfde89e-b22e-422e-814a-e8db432f5a58",
+            pullRequestProjectId: "6bfde89e-b22e-422e-814a-e8db432f5a58",
+            vstfsUrl: "vstfs:///Git/PullRequestId/6bfde89e-b22e-422e-814a-e8db432f5a58%2F12345%2F67890",
             success: true,
           },
           null,
